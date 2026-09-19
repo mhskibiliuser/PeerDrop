@@ -1,0 +1,16 @@
+{
+  "name": "peerdrop-server-storage",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Server-backed file storage for PeerDrop",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@fastify/busboy": "3.2.2"
+  }
+}
