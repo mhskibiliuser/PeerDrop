@@ -3,47 +3,101 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PeerDrop Server Storage</title>
+<title>PeerDrop File Storage</title>
 <style>
+*{box-sizing:border-box}
 body{font-family:Arial,sans-serif;background:#0d0818;color:#eee;margin:0;padding:40px}
-main{max-width:720px;margin:auto;background:#140d24;border:1px solid #3d2b63;border-radius:12px;padding:28px}
-h1{margin-top:0}input,button{font:inherit;padding:11px;border-radius:8px;border:1px solid #3d2b63}
-input[type=url],input[type=password]{width:100%;box-sizing:border-box;background:#0d0818;color:#fff;margin:7px 0 14px}
-button{background:#ff4fc3;color:#160817;font-weight:700;cursor:pointer}
-#drop{border:2px dashed #ff4fc3;padding:30px;text-align:center;border-radius:10px;margin:20px 0}
-#out{word-break:break-all;line-height:1.6}
+main{max-width:760px;margin:auto;background:#140d24;border:1px solid #3d2b63;border-radius:16px;padding:28px}
+h1{margin-top:0}
+#drop{border:2px dashed #ff4fc3;padding:38px;text-align:center;border-radius:12px;margin:22px 0;cursor:pointer}
+#drop.drag{background:#241436}
+input[type=file]{max-width:100%}
+button{font:inherit;padding:11px 16px;border-radius:8px;border:1px solid #3d2b63;background:#ff4fc3;color:#160817;font-weight:700;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+#bar{width:100%;height:10px;background:#241a32;border-radius:99px;overflow:hidden;margin:18px 0}
+#progress{height:100%;width:0;background:#ff4fc3;transition:width .15s}
+#out{word-break:break-word;line-height:1.6;margin-top:18px}
+#out a{color:#ff8ddd}
 small{color:#a995c9}
 </style>
 </head>
 <body>
 <main>
-<h1>PeerDrop server storage</h1>
-<small>Files are stored on the server, not in this browser.</small>
-<label>server URL</label>
-<input id="api" type="url" placeholder="https://your-server.example.com">
-<label>storage token (only if your server uses one)</label>
-<input id="token" type="password" placeholder="optional">
-<div id="drop">choose a file<br><br><input id="file" type="file"></div>
+<h1>PeerDrop file storage</h1>
+<small>upload a file and get a direct FileDitch download link.</small>
+
+<div id="drop">
+  <strong>drop a file here</strong><br><br>
+  <input id="file" type="file">
+</div>
+
 <button id="upload">upload</button>
+<div id="bar"><div id="progress"></div></div>
 <div id="out"></div>
 </main>
+
 <script>
 const $=id=>document.getElementById(id);
-$('api').value=localStorage.getItem('pd_api')||location.origin;
-$('token').value=localStorage.getItem('pd_token')||'';
-$('upload').onclick=async()=>{
-  const api=$('api').value.replace(/\/$/,'');
-  const token=$('token').value;
-  const f=$('file').files[0];
-  if(!f)return $('out').textContent='select a file first';
-  localStorage.setItem('pd_api',api); localStorage.setItem('pd_token',token);
-  $('out').textContent='uploading '+f.name+'...';
-  const fd=new FormData(); fd.append('file',f,f.name);
-  const r=await fetch(api+'/upload',{method:'POST',headers:token?{Authorization:'Bearer '+token}:{},body:fd});
-  const data=await r.json().catch(()=>({error:'bad server response'}));
-  if(!r.ok)return $('out').textContent='error: '+(data.error||r.status);
-  $('out').innerHTML='uploaded: <b>'+data.name+'</b><br><a href="'+data.url+'" target="_blank">'+data.url+'</a>';
+let selected=null;
+
+$('file').onchange=()=>{selected=$('file').files[0]||null};
+$('drop').ondragover=e=>{e.preventDefault();$('drop').classList.add('drag')};
+$('drop').ondragleave=()=>$('drop').classList.remove('drag');
+$('drop').ondrop=e=>{
+  e.preventDefault();
+  $('drop').classList.remove('drag');
+  selected=e.dataTransfer.files[0]||null;
+  if(selected)$('file').files=e.dataTransfer.files;
 };
+
+$('upload').onclick=async()=>{
+  const f=selected||$('file').files[0];
+  if(!f){$('out').textContent='select a file first';return}
+
+  $('upload').disabled=true;
+  $('progress').style.width='0%';
+  $('out').textContent='uploading '+f.name+'...';
+
+  try{
+    const xhr=new XMLHttpRequest();
+    xhr.open('PUT','https://new.fileditch.com/upload.php?filename='+encodeURIComponent(f.name));
+
+    xhr.upload.onprogress=e=>{
+      if(e.lengthComputable){
+        const p=(e.loaded/e.total)*100;
+        $('progress').style.width=p.toFixed(1)+'%';
+        $('out').textContent='uploading '+f.name+' — '+p.toFixed(1)+'%';
+      }
+    };
+
+    xhr.onload=()=>{
+      let data;
+      try{data=JSON.parse(xhr.responseText)}catch{data=null}
+      if(xhr.status>=200&&xhr.status<300&&data&&data.url){
+        $('progress').style.width='100%';
+        $('out').innerHTML='uploaded: <b>'+escapeHtml(data.filename||f.name)+'</b><br><a href="'+escapeAttr(data.url)+'" target="_blank" rel="noopener">'+escapeHtml(data.url)+'</a>';
+      }else{
+        $('out').textContent='upload failed: '+((data&&data.error)||('HTTP '+xhr.status));
+      }
+      $('upload').disabled=false;
+    };
+
+    xhr.onerror=()=>{
+      $('out').textContent='upload failed: network error';
+      $('upload').disabled=false;
+    };
+
+    xhr.send(f);
+  }catch(err){
+    $('out').textContent='upload failed: '+err.message;
+    $('upload').disabled=false;
+  }
+};
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s){return escapeHtml(s)}
 </script>
 </body>
 </html>
