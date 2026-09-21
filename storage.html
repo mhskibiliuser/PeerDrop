@@ -2,102 +2,110 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PeerDrop File Storage</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PeerDrop · Storage</title>
 <style>
-*{box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:#0d0818;color:#eee;margin:0;padding:40px}
-main{max-width:760px;margin:auto;background:#140d24;border:1px solid #3d2b63;border-radius:16px;padding:28px}
-h1{margin-top:0}
-#drop{border:2px dashed #ff4fc3;padding:38px;text-align:center;border-radius:12px;margin:22px 0;cursor:pointer}
-#drop.drag{background:#241436}
-input[type=file]{max-width:100%}
-button{font:inherit;padding:11px 16px;border-radius:8px;border:1px solid #3d2b63;background:#ff4fc3;color:#160817;font-weight:700;cursor:pointer}
-button:disabled{opacity:.5;cursor:not-allowed}
-#bar{width:100%;height:10px;background:#241a32;border-radius:99px;overflow:hidden;margin:18px 0}
-#progress{height:100%;width:0;background:#ff4fc3;transition:width .15s}
-#out{word-break:break-word;line-height:1.6;margin-top:18px}
-#out a{color:#ff8ddd}
-small{color:#a995c9}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0818;--panel:#140d24;--surface:#1a1130;--surface2:#21173c;
+  --border:#2c1f4a;--border2:#3d2b63;--text:#ece4fb;--dim:#6f5f96;--dim2:#9683c4;
+  --pink:#ff4fc3;--purple:#9d5cff;--amber:#ffb238;--red:#ff3860;
+  --cyan:#3ff0e0;--glow:rgba(255,79,195,.35)
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
+body{padding:0}
+#app{min-height:100vh;display:flex;flex-direction:column}
+header{height:52px;background:#0d0d0d;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 18px}
+.brand{font-weight:900;letter-spacing:.06em}.brand span{color:var(--dim2);font-size:12px;font-weight:400;margin-left:7px}
+.back{color:var(--dim2);text-decoration:none;border:1px solid var(--border2);background:var(--surface2);padding:7px 11px;border-radius:4px;font-size:13px}
+.back:hover{color:var(--text);border-color:#5a4685}
+main{width:min(900px,94vw);margin:28px auto 40px}
+.panel{background:var(--panel);border:1px solid var(--border2);border-radius:5px;overflow:hidden}
+.top{padding:20px 22px;border-bottom:1px solid var(--border)}
+h1{font-size:19px;margin-bottom:5px}.sub{color:var(--dim2);font-size:12px}
+.drop{margin:16px;border:1px dashed rgba(255,79,195,.35);border-radius:4px;min-height:190px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;position:relative;transition:.15s}
+.drop:hover,.drop.drag{background:rgba(255,79,195,.09);border-color:rgba(255,79,195,.8);box-shadow:inset 0 0 28px rgba(255,79,195,.07)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop-icon{font-size:34px;color:var(--pink);margin-bottom:8px}.drop-title{font-weight:800;font-size:14px}.drop-sub{color:var(--dim2);font-size:11px;margin-top:5px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 16px}
+button,.copy{font:inherit;font-size:13px;font-weight:700;padding:9px 13px;border-radius:4px;border:1px solid var(--border2);background:var(--surface2);color:var(--dim2);cursor:pointer;text-decoration:none}
+button:hover,.copy:hover{color:var(--text);border-color:#5a4685}
+.primary{background:rgba(255,79,195,.12);color:var(--pink);border-color:rgba(255,79,195,.35)}
+.primary:hover{background:rgba(255,79,195,.2);box-shadow:0 0 12px var(--glow)}
+.danger{color:var(--red);border-color:rgba(255,56,96,.25)}
+button:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}
+.progress-wrap{margin:0 16px 16px;background:var(--surface);border:1px solid var(--border);border-radius:3px;height:10px;overflow:hidden}
+.progress{height:100%;width:0;background:var(--pink);transition:width .15s}
+.status{padding:0 16px 16px;color:var(--dim2);font-size:12px;word-break:break-word;line-height:1.5}
+.result{margin:0 16px 16px;padding:14px;background:var(--surface);border:1px solid var(--border2);border-radius:4px;display:none}
+.result.show{display:block}.result-name{font-weight:800;margin-bottom:8px;word-break:break-word}
+.url{display:block;color:#ff8ddd;word-break:break-all;font-size:12px;margin:8px 0 12px}
+.history{border-top:1px solid var(--border);padding:16px}
+.history h2{font-size:12px;color:var(--dim2);letter-spacing:.05em;margin-bottom:10px}
+.item{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}
+.item:last-child{border-bottom:0}.name{font-weight:700;word-break:break-word}.meta{color:var(--dim2);font-size:11px;margin-top:3px}
+.item a{color:var(--pink);text-decoration:none}.empty{color:var(--dim);font-size:12px}
+@media(max-width:600px){header{padding:0 11px}main{width:96vw;margin-top:14px}.drop{min-height:160px}.item{grid-template-columns:1fr}.item a{justify-self:start}}
 </style>
 </head>
 <body>
+<div id="app">
+<header><div class="brand">PEERDROP <span>STORAGE</span></div><a class="back" href="index.html">← back to PeerDrop</a></header>
 <main>
-<h1>PeerDrop file storage</h1>
-<small>upload a file and get a direct FileDitch download link.</small>
-
-<div id="drop">
-  <strong>drop a file here</strong><br><br>
+<section class="panel">
+<div class="top"><h1>Cloud storage</h1><div class="sub">Upload a file to FileDitch and receive a shareable download link.</div></div>
+<div class="drop" id="drop">
   <input id="file" type="file">
+  <div><div class="drop-icon">↑</div><div class="drop-title">Drop a file here or click to browse</div><div class="drop-sub" id="selected">No file selected</div></div>
 </div>
-
-<button id="upload">upload</button>
-<div id="bar"><div id="progress"></div></div>
-<div id="out"></div>
+<div class="controls">
+  <button class="primary" id="upload" disabled>Upload</button>
+  <button class="danger" id="cancel" disabled>Cancel</button>
+</div>
+<div class="progress-wrap"><div class="progress" id="progress"></div></div>
+<div class="status" id="status">Choose a file to begin.</div>
+<div class="result" id="result"></div>
+<div class="history"><h2>THIS SESSION</h2><div id="history" class="empty">No uploads yet.</div></div>
+</section>
 </main>
-
+</div>
 <script>
 const $=id=>document.getElementById(id);
-let selected=null;
-
-$('file').onchange=()=>{selected=$('file').files[0]||null};
+let selected=null,xhr=null,historyItems=[];
+const fmtB=n=>{if(!Number.isFinite(n))return'';const u=['B','KB','MB','GB','TB'];let i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return (i? n.toFixed(n>=10?1:2):Math.round(n))+' '+u[i]};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function setFile(f){selected=f||null;$('selected').textContent=selected?selected.name+' · '+fmtB(selected.size):'No file selected';$('upload').disabled=!selected||!!xhr;$('result').classList.remove('show');$('progress').style.width='0%';$('status').textContent=selected?'Ready to upload.':'Choose a file to begin.'}
+$('file').onchange=()=>setFile($('file').files[0]);
 $('drop').ondragover=e=>{e.preventDefault();$('drop').classList.add('drag')};
-$('drop').ondragleave=()=>$('drop').classList.remove('drag');
-$('drop').ondrop=e=>{
-  e.preventDefault();
-  $('drop').classList.remove('drag');
-  selected=e.dataTransfer.files[0]||null;
-  if(selected)$('file').files=e.dataTransfer.files;
+$('drop').ondragleave=()=> $('drop').classList.remove('drag');
+$('drop').ondrop=e=>{e.preventDefault();$('drop').classList.remove('drag');setFile(e.dataTransfer.files[0])};
+$('upload').onclick=()=>{
+  if(!selected||xhr)return;
+  xhr=new XMLHttpRequest();
+  $('upload').disabled=true;$('cancel').disabled=false;$('progress').style.width='0%';$('status').textContent='Uploading '+selected.name+'…';
+  xhr.open('PUT','https://new.fileditch.com/upload.php?filename='+encodeURIComponent(selected.name));
+  xhr.upload.onprogress=e=>{if(e.lengthComputable){const p=e.loaded/e.total*100;$('progress').style.width=p.toFixed(1)+'%';$('status').textContent='Uploading '+selected.name+' · '+p.toFixed(1)+'% · '+fmtB(e.loaded)+' / '+fmtB(e.total)}};
+  xhr.onload=()=>{
+    let data=null;try{data=JSON.parse(xhr.responseText)}catch{}
+    if(xhr.status>=200&&xhr.status<300&&data&&data.url){
+      $('progress').style.width='100%';$('status').textContent='Upload complete.';
+      $('result').innerHTML='<div class="result-name">'+esc(data.filename||selected.name)+'</div><div style="color:var(--dim2);font-size:11px">Share this direct download link:</div><a class="url" id="resultUrl" target="_blank" rel="noopener" href="'+esc(data.url)+'">'+esc(data.url)+'</a><button class="copy" id="copy">Copy link</button>';
+      $('result').classList.add('show');$('copy').onclick=()=>navigator.clipboard.writeText(data.url).then(()=>{$('copy').textContent='Copied!'},()=>{$('copy').textContent='Copy failed'});
+      historyItems.unshift({name:data.filename||selected.name,url:data.url,size:selected.size});
+      renderHistory();
+    }else $('status').textContent='Upload failed: '+((data&&data.error)||('HTTP '+xhr.status));
+    xhr=null;$('upload').disabled=!selected;$('cancel').disabled=true;
+  };
+  xhr.onerror=()=>{ $('status').textContent='Upload failed: network error.';xhr=null;$('upload').disabled=!selected;$('cancel').disabled=true };
+  xhr.onabort=()=>{ $('status').textContent='Upload cancelled.';xhr=null;$('upload').disabled=!selected;$('cancel').disabled=true;$('progress').style.width='0%' };
+  xhr.send(selected);
 };
-
-$('upload').onclick=async()=>{
-  const f=selected||$('file').files[0];
-  if(!f){$('out').textContent='select a file first';return}
-
-  $('upload').disabled=true;
-  $('progress').style.width='0%';
-  $('out').textContent='uploading '+f.name+'...';
-
-  try{
-    const xhr=new XMLHttpRequest();
-    xhr.open('PUT','https://new.fileditch.com/upload.php?filename='+encodeURIComponent(f.name));
-
-    xhr.upload.onprogress=e=>{
-      if(e.lengthComputable){
-        const p=(e.loaded/e.total)*100;
-        $('progress').style.width=p.toFixed(1)+'%';
-        $('out').textContent='uploading '+f.name+' — '+p.toFixed(1)+'%';
-      }
-    };
-
-    xhr.onload=()=>{
-      let data;
-      try{data=JSON.parse(xhr.responseText)}catch{data=null}
-      if(xhr.status>=200&&xhr.status<300&&data&&data.url){
-        $('progress').style.width='100%';
-        $('out').innerHTML='uploaded: <b>'+escapeHtml(data.filename||f.name)+'</b><br><a href="'+escapeAttr(data.url)+'" target="_blank" rel="noopener">'+escapeHtml(data.url)+'</a>';
-      }else{
-        $('out').textContent='upload failed: '+((data&&data.error)||('HTTP '+xhr.status));
-      }
-      $('upload').disabled=false;
-    };
-
-    xhr.onerror=()=>{
-      $('out').textContent='upload failed: network error';
-      $('upload').disabled=false;
-    };
-
-    xhr.send(f);
-  }catch(err){
-    $('out').textContent='upload failed: '+err.message;
-    $('upload').disabled=false;
-  }
-};
-
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+$('cancel').onclick=()=>{if(xhr)xhr.abort()};
+function renderHistory(){
+  if(!historyItems.length){$('history').className='empty';$('history').textContent='No uploads yet.';return}
+  $('history').className='';
+  $('history').innerHTML=historyItems.map(x=>'<div class="item"><div><div class="name">'+esc(x.name)+'</div><div class="meta">'+fmtB(x.size)+'</div></div><a target="_blank" rel="noopener" href="'+esc(x.url)+'">open link ↗</a></div>').join('');
 }
-function escapeAttr(s){return escapeHtml(s)}
 </script>
 </body>
 </html>
