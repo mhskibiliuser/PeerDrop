@@ -119,7 +119,7 @@
     }
     .role-panel-sub { font-size: 0.7rem; color: var(--dim2); letter-spacing: .06em; }
     .role-btns {
-      display: grid; grid-template-columns: 1fr 1fr;
+      display: grid; grid-template-columns: repeat(3, 1fr);
       gap: 1px; background: var(--border);
     }
     .role-btn {
@@ -761,6 +761,11 @@
               <span class="r-icon" id="ico-role-server" style="color:var(--cyan)"></span>
               <span class="r-label" data-i18n="role_server_label">Server</span>
               <span class="r-desc" data-i18n="role_server_desc">Host a file library for multiple peers</span>
+            </button>
+            <button class="role-btn" id="btn-storage" onclick="openStorage()" data-tooltip="storage">
+              <span class="r-icon" id="ico-role-storage" style="color:var(--cyan)"></span>
+              <span class="r-label">Storage</span>
+              <span class="r-desc">Upload to cloud storage and get a share link</span>
             </button>
           </div>
           <div class="role-hint status pulse" data-i18n="role_hint">Hover or tap a mode for details · Click to get started</div>
@@ -1823,11 +1828,16 @@
   }
 
   /* ════════════ CHOIX DE ROLE ════════════ */
+  function openStorage(){
+    window.location.href='storage.html';
+  }
+
   function chooseRole(role){
     if(roleChosen)return;
     roleChosen=true;
     document.getElementById('btn-receiver').disabled=true;
     document.getElementById('btn-server').disabled=true;
+    document.getElementById('btn-storage').disabled=true;
     document.getElementById('btn-'+role).classList.add('selected');
     var hint=document.querySelector('.role-hint');
     if(hint){hint.className='role-hint status ok';hint.textContent=t('role_hint_loading');}
@@ -3193,6 +3203,7 @@
     var staticIcons={
       'ico-role-receive':['download',24],
       'ico-role-server':['server',24],
+      'ico-role-storage':['upload',24],
       'ico-edge':['bulb',16],
       'ico-dir-choose':['folder',13],
       'ico-dir-clear':['x',12],
